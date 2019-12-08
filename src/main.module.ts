@@ -18,11 +18,9 @@ import {join} from 'path';
         {
           type: 'mysql',
           host: 'localhost',
-          // host: '47.106.104.22',
           port: 3306,
           username: 'root',
           password: '123456',
-          // password: 'root',
           database: 'b_simple_cms_center',
           entities: [join(__dirname, '**/**.entity{.ts,.js}')],
           synchronize: true,
