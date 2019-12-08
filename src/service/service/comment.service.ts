@@ -10,6 +10,7 @@ import {CreateCommentDto} from '../../model/DTO/comment/create_comment.dto';
 import {UpdateCommentDto} from '../../model/DTO/comment/update_comment.dto';
 import {Comment} from '../../model/entity/comment.entity';
 import {QueryCommentDto} from '../../model/DTO/comment/query_comment.dto';
+import {QueryCommentByIdDto} from '../../model/DTO/comment/query_comment_by_id.dto';
 
 @Injectable()
 export class CommentService {
@@ -47,6 +48,27 @@ export class CommentService {
   }
 
   /**
+   * 查询文章的评论列表
+   * @param query
+   */
+  public async getListById(query: QueryCommentByIdDto): Promise<any> {
+    try {
+      const res = await this.commentRepository
+          .createQueryBuilder('c')
+          .leftJoinAndSelect('c.post', 'p')
+          .where('c.postId = :postId', {postId: Number(query.postId)} )
+          .andWhere('c.isDelete = :isDelete', { isDelete: 0})
+          .orderBy('c.time', 'ASC')
+          .skip((query.page - 1) * query.pageSize)
+          .take(query.pageSize)
+          .select(['c', 'p.id', 'p.title'])
+          .getManyAndCount();
+      return  { data: res[0], count: res[1]};
+    } catch (e) {
+      throw new ApiException(e.errorMessage, ApiErrorCode.AUTHORITY_CREATED_FILED, 200);
+    }
+  }
+  /**
    * 查询评论详情
    * @param id
    */
@@ -82,9 +104,10 @@ export class CommentService {
               .createQueryBuilder('c')
               .insert()
               .into(Comment)
-              .values([{content: params.content, parentId: params.parentId, time: params.time || '', email: params.email || '', userId: params.userId, userName: params.userName, post: commentPost }])
+              .values({content: params.content, parentId: params.parentId, time: params.time || '', email: params.email || '', userId: params.userId, userName: params.userName, post: commentPost })
               .execute();
         } catch (e) {
+          console.log(e);
           throw new ApiException('评论失败', ApiErrorCode.AUTHORITY_CREATED_FILED, 200);
         }
     } catch (e) {

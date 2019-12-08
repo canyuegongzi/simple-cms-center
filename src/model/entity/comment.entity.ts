@@ -6,8 +6,8 @@ export class Comment {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Column({nullable: false})
-    userId: number;
+    @Column({nullable: true})
+    userId: string;
 
     @Column('longtext', {nullable: false})
     content: string;
