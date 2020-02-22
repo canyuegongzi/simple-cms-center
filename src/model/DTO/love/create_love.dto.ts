@@ -27,8 +27,9 @@ export class CreateLoveDto {
 
   system: string;
 
-  @IsNotEmpty({ message: '文章不能为空', context: { errorCode: ApiErrorCode.USER_NAME_STRING } })
   postId: any;
+
+  commentId: any;
 
   loveIp: string;
 }

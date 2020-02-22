@@ -3,7 +3,7 @@ import { RedisModule} from 'nestjs-redis';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import {redisConfig} from './config/config';
+import {mysqlConfig, redisConfig} from './config/config';
 import {PostModule} from './module/post.module';
 import {CategoryModule} from './module/category.module';
 import {TagModule} from './module/tag.module';
@@ -17,10 +17,10 @@ import {join} from 'path';
     TypeOrmModule.forRoot(
         {
           type: 'mysql',
-          host: 'localhost',
+          host: mysqlConfig.host,
           port: 3306,
-          username: 'root',
-          password: '123456',
+          username: mysqlConfig.userName,
+          password: mysqlConfig.password,
           database: 'b_simple_cms_center',
           entities: [join(__dirname, '**/**.entity{.ts,.js}')],
           synchronize: true,

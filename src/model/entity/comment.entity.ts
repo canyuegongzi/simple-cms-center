@@ -1,5 +1,6 @@
-import {Column, Entity, ManyToOne, PrimaryGeneratedColumn} from 'typeorm';
+import {Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn} from 'typeorm';
 import {Post} from './post.entity';
+import {Love} from './love.entity';
 
 @Entity()
 export class Comment {
@@ -29,4 +30,19 @@ export class Comment {
 
     @ManyToOne(type => Post, post => post.comments)
     post: Post;
+
+    @OneToMany(type => Love, love => love.comment)
+    loves: Love[];
+
+    @Column({nullable: true, default: 0})
+    likes: number;
+
+    @Column({default: '', nullable: true })
+    crateTime: string;
+
+    @Column({default: '', nullable: true })
+    updateTime: string;
+
+    @Column({default: '', nullable: true })
+    deleteTime: string;
 }

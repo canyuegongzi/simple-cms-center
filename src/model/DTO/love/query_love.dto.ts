@@ -4,4 +4,14 @@ export class QueryLoveDto {
   page: number;
 
   pageSize: number;
+
+  startTime: any;
+
+  endTime: any;
+
+  type: number;
+
+  email: number;
+
+  userName: number;
 }

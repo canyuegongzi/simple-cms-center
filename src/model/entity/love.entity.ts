@@ -1,5 +1,7 @@
 import {Column, Entity, ManyToOne, PrimaryGeneratedColumn} from 'typeorm';
 import {Post} from './post.entity';
+// tslint:disable-next-line:import-spacing
+import { Comment } from  './comment.entity';
 
 @Entity()
 export class Love {
@@ -45,4 +47,16 @@ export class Love {
 
     @ManyToOne(type => Post, post => post.loves)
     post: Post;
+
+    @ManyToOne(type => Comment, comment => comment.loves)
+    comment: Comment;
+
+    @Column({default: '', nullable: true })
+    crateTime: string;
+
+    @Column({default: '', nullable: true })
+    updateTime: string;
+
+    @Column({default: '', nullable: true })
+    deleteTime: string;
 }

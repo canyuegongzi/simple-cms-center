@@ -109,4 +109,17 @@ export class CategoryController {
       return  { code: 200, data: null, message: e.errorMessage };
     }
   }
+
+  /**
+   * 查询全部的分类
+   */
+  @Get('all')
+  public async getAllList() {
+    try {
+      const res = await this.categoryService.getAllList();
+      return  { code: 200, data: res, message: '查询成功' };
+    } catch (e) {
+      return  { code: 200, data: null, message: e.errorMessage };
+    }
+  }
 }

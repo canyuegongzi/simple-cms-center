@@ -7,9 +7,11 @@ import {ApiException} from '../../common/error/exceptions/api.exception';
 import {Category} from '../../model/entity/category.entity';
 import {Tag} from '../../model/entity/tag.entity';
 import {Love} from '../../model/entity/love.entity';
+import {Comment} from '../../model/entity/comment.entity';
 import {CreateLoveDto} from '../../model/DTO/love/create_love.dto';
 import {getSystemInfo} from '../../utils/system';
 import {QueryLoveDto} from '../../model/DTO/love/query_love.dto';
+import {formatDate} from '../../utils/data-time';
 
 @Injectable()
 export class LoveService {
@@ -22,6 +24,8 @@ export class LoveService {
     private readonly tagRepository: Repository<Tag>,
     @InjectRepository(Love)
     private readonly loveRepository: Repository<Love>,
+    @InjectRepository(Comment)
+    private readonly commentRepository: Repository<Comment>,
   ) {}
   /**
    * 查询喜欢列表
@@ -29,9 +33,33 @@ export class LoveService {
    */
   public async getList(query: QueryLoveDto): Promise<any> {
     try {
+      const queryConditionList = ['l.isDelete = :isDelete'];
+      if (query.type) {
+        queryConditionList.push('l.type = :type');
+      }
+      if (query.email) {
+        queryConditionList.push('l.email = :email');
+      }
+      if (query.userName) {
+        queryConditionList.push('l.userName = :userName');
+      }
+      if (query.startTime) {
+        queryConditionList.push('l.time >= :startTime');
+      }
+      if (query.endTime) {
+        queryConditionList.push('l.time <= :endTime');
+      }
+      const queryCondition = queryConditionList.join(' AND ');
       const res = await this.loveRepository
-          .createQueryBuilder('c')
-          .where('c.isDelete = :isDelete', { isDelete: 0})
+          .createQueryBuilder('l')
+          .where(queryCondition, {
+            isDelete: 0,
+            userName: `%${query.userName}%`,
+            email: `%${query.email}%`,
+            type: query.type,
+            startTime: query.startTime,
+            endTime: query.endTime,
+          })
           .skip((query.page - 1) * query.pageSize)
           .take(query.pageSize)
           .getManyAndCount();
@@ -48,31 +76,69 @@ export class LoveService {
    */
   public async creatLove(params: CreateLoveDto, info: any) {
     try {
-      let lovePost: Post;
+      let loveObj: any;
       const { loveIp, city, province, address, browser, system} = getSystemInfo(info);
       try {
-        lovePost = await this.postRepository
-            .createQueryBuilder()
-            .where('id = :id', { id: params.postId})
-            .getOne();
+        if (params.type === 1) {
+          try {
+            loveObj = await this.postRepository
+                .createQueryBuilder()
+                .where('id = :id', { id: params.postId})
+                .getOne();
+          } catch (e) {
+            throw new ApiException('喜欢对象不能为空', ApiErrorCode.AUTHORITY_CREATED_FILED, 200);
+          }
+          try {
+            await this.postRepository
+                .createQueryBuilder('p')
+                .update(Post)
+                .set({ likes: loveObj.likes + 1})
+                .where('id = :id', { id: params.postId })
+                .execute();
+            return await this.loveRepository
+                .createQueryBuilder('l')
+                .insert()
+                .into(Love)
+                .values([{userId: params.userId, userName: params.userName, time: params.time,
+                  email: params.email || '', post: loveObj, type: params.type, loveIp, city, province, address, browser, system}])
+                .execute();
+          } catch (e) {
+            throw new ApiException('操作失败', ApiErrorCode.AUTHORITY_CREATED_FILED, 200);
+          }
+        } else if (params.type === 2) {
+          try {
+            loveObj = await this.commentRepository
+                .createQueryBuilder()
+                .where('id = :id', { id: params.commentId})
+                .getOne();
+          } catch (e) {
+            throw new ApiException('喜欢对象不能为空', ApiErrorCode.AUTHORITY_CREATED_FILED, 200);
+          }
+          try {
+            await this.commentRepository
+                .createQueryBuilder('c')
+                .update(Comment)
+                .set({ likes: loveObj.likes + 1})
+                .where('id = :id', { id: params.commentId })
+                .execute();
+            return await this.loveRepository
+                .createQueryBuilder('l')
+                .insert()
+                .into(Love)
+                .values([{userId: params.userId, userName: params.userName, time: params.time,
+                  email: params.email || '', comment: loveObj, post: null, type: params.type, loveIp, city, province, address, browser, system}])
+                .execute();
+          } catch (e) {
+            throw new ApiException('操作失败', ApiErrorCode.AUTHORITY_CREATED_FILED, 200);
+          }
+        } else {
+          throw new ApiException('喜欢对象不能为空', ApiErrorCode.AUTHORITY_CREATED_FILED, 200);
+        }
       } catch (e) {
-          throw new ApiException('文章不存在', ApiErrorCode.AUTHORITY_CREATED_FILED, 200);
+          throw new ApiException(e.errorMessage, ApiErrorCode.AUTHORITY_CREATED_FILED, 200);
       }
-      await this.postRepository
-          .createQueryBuilder('p')
-          .update(Post)
-          .set({ likes: lovePost.likes + 1})
-          .where('id = :id', { id: params.postId })
-          .execute();
-      return await this.loveRepository
-          .createQueryBuilder('l')
-          .insert()
-          .into(Love)
-          .values([{userId: params.userId, userName: params.userName, time: params.time,
-            email: params.email || '', post: lovePost, type: params.type, loveIp, city, province, address, browser, system}])
-          .execute();
     } catch (e) {
-      throw new ApiException('操作失败', ApiErrorCode.AUTHORITY_CREATED_FILED, 200);
+      throw new ApiException(e.errorMessage, ApiErrorCode.AUTHORITY_CREATED_FILED, 200);
     }
   }
 
@@ -80,16 +146,20 @@ export class LoveService {
    * 取消喜欢
    * @param params
    */
-  public async cancelLove(params: any) {
+  public async cancelLove(params: Array<number | string>, info: any) {
     try {
-      return  await this.loveRepository
-          .createQueryBuilder('l')
-          .update(Love)
-          .set({ isDelete: 1})
-          .where('id = :id', { id: params})
-          .execute();
+      try {
+        return await this.loveRepository
+            .createQueryBuilder('l')
+            .update(Love)
+            .set({ isDelete: 1, updateTime: formatDate() })
+            .whereInIds(params)
+            .execute();
+      } catch (e) {
+        throw new ApiException(e.errorMessage, ApiErrorCode.AUTHORITY_CREATED_FILED, 200);
+      }
     } catch (e) {
-      throw new ApiException('操作失败', ApiErrorCode.AUTHORITY_CREATED_FILED, 200);
+      throw new ApiException(e.errorMessage, ApiErrorCode.AUTHORITY_CREATED_FILED, 200);
     }
   }
 }

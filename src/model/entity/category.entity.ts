@@ -26,4 +26,13 @@ export class Category {
 
     @OneToMany(type => Post, post => post.category)
     posts: Post[];
+
+    @Column({default: '', nullable: true })
+    crateTime: string;
+
+    @Column({default: '', nullable: true })
+    updateTime: string;
+
+    @Column({default: '', nullable: true })
+    deleteTime: string;
 }

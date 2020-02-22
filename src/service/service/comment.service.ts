@@ -31,11 +31,31 @@ export class CommentService {
    */
   public async getList(query: QueryCommentDto): Promise<any> {
     try {
+      const queryConditionList = ['c.isDelete = :isDelete'];
+      const leftJoinConditionList = [];
+      if (query.content) {
+        queryConditionList.push('c.content LIKE :content');
+      }
+      if (query.title) {
+        queryConditionList.push('p.title LIKE :title');
+      }
+      if (query.startTime) {
+        queryConditionList.push('c.time >= :startTime');
+      }
+      if (query.endTime) {
+        queryConditionList.push('c.time <= :endTime');
+      }
+      const queryCondition = queryConditionList.join(' AND ');
       const res = await this.commentRepository
           .createQueryBuilder('c')
           .leftJoinAndSelect('c.post', 'p')
-          .orWhere('c.content like :content', { content: `%${query.title}%`})
-          .where('c.isDelete = :isDelete', { isDelete: 0})
+          .where(queryCondition, {
+            title: `%${query.title}%`,
+            content: `%${query.content}%`,
+            isDelete: 0,
+            startTime: query.startTime,
+            endTime: query.endTime,
+          })
           .orderBy('c.time', 'ASC')
           .skip((query.page - 1) * query.pageSize)
           .take(query.pageSize)
@@ -137,13 +157,13 @@ export class CommentService {
    * 删除评论
    * @param id
    */
-  public async deleteComment(id: number | string) {
+  public async deleteComment(id: Array<number | string>) {
     try {
       return await this.commentRepository
           .createQueryBuilder('c')
           .update(Comment)
           .set({ isDelete: 1})
-          .where('id = :id', { id })
+          .whereInIds(id)
           .execute();
     } catch (e) {
       throw new ApiException(e.errorMessage, ApiErrorCode.AUTHORITY_CREATED_FILED, 200);

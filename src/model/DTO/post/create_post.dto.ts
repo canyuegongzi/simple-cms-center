@@ -6,18 +6,18 @@ export class CreatePostDto {
   title: string;
 
   @IsNotEmpty({ message: '标题不能为空', context: { errorCode: ApiErrorCode.USER_NAME_STRING } })
-  desc: any;
+  desc: string;
 
   // @ts-ignore
   // @IsNumber({allowNaN: false, allowInfinity: false }, {message: '标签格式错误', context: { errorCode: ApiErrorCode.USER_NAME_STRING }})
   tags: Array<string | number>;
 
-  @IsNotEmpty({ message: '内容不能为空', context: { errorCode: ApiErrorCode.USER_NAME_STRING } })
-  content: any;
+  content: string;
 
-  contentMd: any;
+  @IsNotEmpty({ message: 'MD不能为空', context: { errorCode: ApiErrorCode.USER_NAME_STRING } })
+  contentMd: string;
 
-  time: any;
+  time: string;
 
   userId: any;
 

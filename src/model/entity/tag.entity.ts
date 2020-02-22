@@ -21,4 +21,13 @@ export class Tag {
 
     @Column({ nullable: false})
     desc: string;
+
+    @Column({default: '', nullable: true })
+    crateTime: string;
+
+    @Column({default: '', nullable: true })
+    updateTime: string;
+
+    @Column({default: '', nullable: true })
+    deleteTime: string;
 }

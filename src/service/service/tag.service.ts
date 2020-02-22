@@ -9,6 +9,7 @@ import {Tag} from '../../model/entity/tag.entity';
 import {CreateTagDto} from '../../model/DTO/tag/create_tag.dto';
 import {UpdateTagDto} from '../../model/DTO/tag/update_tag.dto';
 import {QueryTagDto} from '../../model/DTO/tag/query_tag.dto';
+import {formatDate} from '../../utils/data-time';
 
 @Injectable()
 export class TagService {
@@ -31,7 +32,7 @@ export class TagService {
           .createQueryBuilder('t')
           .insert()
           .into(Tag)
-          .values([{name: params.name, code: params.code, desc: params.desc }])
+          .values([{name: params.name, code: params.code, desc: params.desc, crateTime: formatDate() }])
           .execute();
     } catch (e) {
       throw new ApiException(e.errorMessage, ApiErrorCode.AUTHORITY_CREATED_FILED, 200);
@@ -47,7 +48,7 @@ export class TagService {
       return await this.tagRepository
           .createQueryBuilder()
           .update(Tag)
-          .set({ name: params.name, desc: params.desc, code: params.code })
+          .set({ name: params.name, desc: params.desc, code: params.code, updateTime: formatDate() })
           .where('id = :id', { id: params.id })
           .execute();
     } catch (e) {
@@ -65,7 +66,7 @@ export class TagService {
       return await this.tagRepository
           .createQueryBuilder()
           .update(Tag)
-          .set({ isDelete: 1})
+          .set({ isDelete: 1, deleteTime: formatDate()})
           .whereInIds(id)
           .execute();
     } catch (e) {
@@ -79,11 +80,18 @@ export class TagService {
    */
   public async getList(query: QueryTagDto): Promise<any> {
     try {
+      const queryConditionList = ['t.isDelete = :isDelete'];
+      if (query.name) {
+        queryConditionList.push('t.name like :name');
+      }
+      const queryCondition = queryConditionList.join(' AND ');
       const res = await this.tagRepository
           .createQueryBuilder('t')
-          .orWhere('t.name like :name', { name: `%${query.name}%`})
+          .where(queryCondition, {
+            name: `%${query.name}%`,
+            isDelete: 0,
+          })
           .orderBy('t.name', 'ASC')
-          .andWhere('t.isDelete = :isDelete', { isDelete: 0})
           .skip((query.page - 1) * query.pageSize)
           .take(query.pageSize)
           .getManyAndCount();
@@ -141,7 +149,7 @@ export class TagService {
     try {
       return this.tagRepository
           .createQueryBuilder('t')
-          .getMany()
+          .getMany();
     } catch (e) {
       throw new ApiException(e.errorMessage, ApiErrorCode.AUTHORITY_CREATED_FILED, 200);
     }

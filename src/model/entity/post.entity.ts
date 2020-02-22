@@ -13,7 +13,7 @@ export class Post {
     title: string;
 
     @Column()
-    time: string;
+    time: number;
 
     @Column({type: 'text'})
     desc: string;
@@ -56,5 +56,14 @@ export class Post {
     @ManyToMany( type => Tag, tag => tag.posts)
     @JoinTable()
     tags: Tag[];
+
+    @Column({default: '', nullable: true })
+    crateTime: string;
+
+    @Column({default: '', nullable: true })
+    updateTime: string;
+
+    @Column({default: '', nullable: true })
+    deleteTime: string;
 
 }

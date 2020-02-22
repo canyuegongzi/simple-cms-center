@@ -56,6 +56,20 @@ export class PostController {
   }
 
   /**
+   * 删除文章
+   * @param params
+   */
+  @Post('recover')
+  public async recover(@Body() params: DeletePostDto) {
+    try {
+      const res = await this.postService.recoverPost(params.id);
+      return  { code: 200, message: '操作成功', success: true };
+    } catch (e) {
+      return  { code: 200, message: e.errorMessage, success: false};
+    }
+  }
+
+  /**
    * 查询文章列表
    * @param params
    */

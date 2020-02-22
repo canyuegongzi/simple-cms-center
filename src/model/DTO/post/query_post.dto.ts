@@ -5,11 +5,15 @@ export class QueryPostDto {
 
   pageSize: number;
 
-  tags: any;
+  tagId: any;
 
   categoryId: number| string;
 
   isDelete: number;
 
   recommend: number;
+
+  startTime: string;
+
+  endTime: string;
 }

@@ -19,9 +19,9 @@ export class LoveController {
   public async creatLove(@Body() params: CreateLoveDto, @Req() req: any) {
     try {
       const res = await this.loveService.creatLove(params, req);
-      return  { code: 200,  message: '操作成功' };
+      return  { code: 200,  message: '操作成功',  success: true };
     } catch (e) {
-      return  { code: 200, message: e.errorMessage };
+      return  { code: 200, message: e.errorMessage,  success: false };
     }
   }
 
@@ -30,12 +30,12 @@ export class LoveController {
    * @param params
    */
   @Post('cancel')
-  public async cancelLove(@Body('id') params: any) {
+  public async cancelLove(@Body('id') params: any, @Req() req: any) {
     try {
-      const res = await this.loveService.cancelLove(params);
-      return  { code: 200, message: '操作成功' };
+      const res = await this.loveService.cancelLove(params, req);
+      return  { code: 200, message: '操作成功', success: true };
     } catch (e) {
-      return  { code: 200, message: e.errorMessage };
+      return  { code: 200, message: e.errorMessage,  success: false };
     }
   }
 
@@ -47,9 +47,9 @@ export class LoveController {
   public async getList(@Query() params: QueryLoveDto) {
     try {
       const res = await this.loveService.getList(params);
-      return  { code: 200, data: res, message: '查询成功' };
+      return  { code: 200, data: res, message: '查询成功',  success: true };
     } catch (e) {
-      return  { code: 200, data: null, message: e.errorMessage };
+      return  { code: 200, data: null, message: e.errorMessage,  success: false };
     }
   }
 }

@@ -34,7 +34,7 @@ export class PostService {
             .createQueryBuilder('p')
             .insert()
             .into(Post)
-            .values([ {time: formatDate(), title: params.title, desc: params.desc, contentMd: params.contentMd, recommend: params.recommend, linkImg: params.linkImg, content: params.content, userId: params.userId || '', category: await this.categoryRepository.findOne(params.categoryId)}])
+            .values([ {time: new Date().getTime(), crateTime: formatDate(), updateTime: formatDate(), title: params.title, desc: params.desc, contentMd: params.contentMd, recommend: params.recommend, linkImg: params.linkImg, content: params.content, userId: params.userId || '', category: await this.categoryRepository.findOne(params.categoryId)}])
             .execute();
         postId = res.identifiers[0].id;
         const post = await this.postRepository.findOne(postId, {relations: ['tags']});
@@ -48,8 +48,7 @@ export class PostService {
           throw new ApiException('标签创建失败', ApiErrorCode.AUTHORITY_CREATED_FILED, 200);
         }
       } catch (e) {
-        console.log(e);
-        throw new ApiException('插入失败', ApiErrorCode.AUTHORITY_CREATED_FILED, 200);
+        throw new ApiException(e.errorMessage, ApiErrorCode.AUTHORITY_CREATED_FILED, 200);
       }
     } catch (e) {
       throw new ApiException(e.errorMessage, ApiErrorCode.AUTHORITY_CREATED_FILED, 200);
@@ -67,7 +66,7 @@ export class PostService {
         const res = await this.postRepository
             .createQueryBuilder('p')
             .update(Post)
-            .set({time: formatDate(), title: params.title, contentMd: params.contentMd, desc: params.desc, recommend: params.recommend, linkImg: params.linkImg, content: params.content, userId: params.userId || '', category: await this.categoryRepository.findOne(params.categoryId)})
+            .set({time: new Date().getTime(), title: params.title, updateTime: formatDate(), contentMd: params.contentMd, desc: params.desc, recommend: params.recommend, linkImg: params.linkImg, content: params.content, userId: params.userId || '', category: await this.categoryRepository.findOne(params.categoryId)})
             .where('id = :id', { id: params.id })
             .execute();
         const post = await this.postRepository.findOne(params.id, {relations: ['tags']});
@@ -81,7 +80,7 @@ export class PostService {
           throw new ApiException('修改失败', ApiErrorCode.AUTHORITY_CREATED_FILED, 200);
         }
       } catch (e) {
-        throw new ApiException('修改失败', ApiErrorCode.AUTHORITY_CREATED_FILED, 200);
+        throw new ApiException(e.errorMessage, ApiErrorCode.AUTHORITY_CREATED_FILED, 200);
       }
     } catch (e) {
       throw new ApiException(e.errorMessage, ApiErrorCode.AUTHORITY_CREATED_FILED, 200);
@@ -108,7 +107,7 @@ export class PostService {
   }
 
   /**
-   * 修改喜欢的数量
+   * 喜欢
    * @param recommend
    * @param id
    */
@@ -148,13 +147,31 @@ export class PostService {
    * @param recommend
    * @param id
    */
-  public async deletePost(id: number | string) {
+  public async deletePost(id: Array<number | string>) {
     try {
       return await this.postRepository
           .createQueryBuilder('p')
           .update(Post)
-          .set({ isDelete: 1})
-          .where('id = :id', { id })
+          .set({ isDelete: 1, deleteTime: formatDate() })
+          .whereInIds(id)
+          .execute();
+    } catch (e) {
+      throw new ApiException('操作失败', ApiErrorCode.AUTHORITY_CREATED_FILED, 200);
+    }
+  }
+
+  /**
+   * 恢复文章
+   * @param recommend
+   * @param id
+   */
+  public async recoverPost(id: Array<number | string>) {
+    try {
+      return await this.postRepository
+          .createQueryBuilder('p')
+          .update(Post)
+          .set({ isDelete: 0, updateTime: formatDate() })
+          .whereInIds(id)
           .execute();
     } catch (e) {
       throw new ApiException('操作失败', ApiErrorCode.AUTHORITY_CREATED_FILED, 200);
@@ -167,18 +184,49 @@ export class PostService {
    */
   public async getList(query: QueryPostDto): Promise<any> {
     try {
+      const queryConditionList = ['p.isDelete = :isDelete'];
+      const leftJoinConditionList = [];
+      let leftJoinConditionTags = {};
+      if (query.categoryId) {
+        queryConditionList.push('p.categoryId = :categoryId');
+      }
+      if (query.title) {
+        queryConditionList.push('p.title LIKE :title');
+      }
+      // @ts-ignore
+      if (query.recommend !== '' && query.recommend !== undefined && query.recommend !== null) {
+        queryConditionList.push('p.recommend = :recommend');
+      }
+      if (query.startTime) {
+        queryConditionList.push('p.time >= :startTime');
+      }
+      if (query.endTime) {
+        queryConditionList.push('p.time <= :endTime');
+      }
+      if (query.tagId) {
+        leftJoinConditionList.push('tag.id = :id');
+        queryConditionList.push('tag.id = :tagId');
+        leftJoinConditionTags = {id: query.tagId};
+      }
+      const queryCondition = queryConditionList.join(' AND ');
+      const leftJoinCondition = leftJoinConditionList.join('');
       const res = await this.postRepository
           .createQueryBuilder('p')
-          .leftJoinAndSelect('p.category', 'category')
-          .leftJoinAndSelect('p.tags', 'tag' )
-          .where('p.title like :title', { title: `${query.title ? `%${query.title}%` : '%%'}`})
-          .orWhere('p.categoryId = :categoryId', {categoryId: query.categoryId})
-          .orWhere('p.recommend = :recommend', {recommend: query.recommend})
-          .andWhere('p.isDelete = :isDelete', { isDelete: 0})
+          .leftJoinAndSelect('p.category', 'c')
+          .leftJoinAndSelect('p.tags', 'tag', leftJoinCondition, leftJoinConditionTags )
+          .where(queryCondition, {
+            title: `%${query.title}%`,
+            categoryId: query.categoryId,
+            isDelete: query.isDelete ? query.isDelete : 0,
+            tagId: query.tagId,
+            recommend: query.recommend,
+            startTime: query.startTime,
+            endTime: query.endTime,
+          })
           .orderBy('p.time', 'DESC')
           .skip((query.page - 1) * query.pageSize)
           .take(query.pageSize)
-          .select(['p.time', 'p.id', 'p.views', 'p.title', 'p.desc',  'p.linkImg', 'category.name', 'category.id', 'tag.id', 'tag.name', 'p.likes'])
+          .select(['p.time', 'p.id', 'p.views', 'p.title', 'p.crateTime', 'p.updateTime', 'p.deleteTime', 'p.desc',  'p.linkImg', 'c.name', 'c.id', 'tag.id', 'tag.name', 'p.likes'])
           .getManyAndCount();
       return  { data: res[0], count: res[1]};
     } catch (e) {

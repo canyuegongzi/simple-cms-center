@@ -8,5 +8,9 @@ export const redisConfig = {
     name: 'user_token',
     url: 'redis://127.0.0.1:6379/4',
 };
-
+export const mysqlConfig = {
+    host: '127.0.0.1',
+    userName: 'root',
+    password: 'root',
+};
 export default config;
